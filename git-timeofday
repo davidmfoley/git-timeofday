@@ -6,9 +6,12 @@ def main
   max_count = 0
 
   ARGV.each do |author|
-    puts "author: #{author}"
-    lines = `git log --author=#{author} | awk /^Date/ | awk '{printf "%s\\n", $5}'`
-    groups = lines.split("\n").group_by do |l|
+    #puts "author: #{author}"
+    lines = `git log --author=#{author}`
+    time_lines = lines.split("\n").select {|l| l =~ /^Date:/}
+    times = time_lines.map {|l| l.split(' ').select {|piece| piece =~ /\d\d\:\d\d\:\d\d/} }.flatten
+    
+    groups = times.group_by do |l|
       get_time_segment(l)
     end
 
@@ -22,7 +25,6 @@ def main
       #print cocks
       #puts "#{g} #{'% 3d' % count} 8#{'=' * count}D"
     end
-    puts
   end
 
   pivoted = {}
@@ -33,17 +35,7 @@ def main
     end
   end
 
-  print_author_key ARGV
-
   segments = pivoted.keys.sort.compact
-
-  segments.each do |hour|
-    draw = [' '] * max_count
-    pivoted[hour].each do |a, count|
-      draw[count] = get_point(a)
-    end
-    puts "#{hour} - #{draw.join('')}"
-  end
 
   print_author_key ARGV
   scaled_max = 30.0
@@ -127,7 +119,7 @@ def get_color author
 end
 
 def get_point author
-  colorize("*", get_color( author ))
+  colorize("#", get_color( author ))
 end
 
 def colorize(text, color_code)
