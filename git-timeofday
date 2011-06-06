@@ -5,12 +5,16 @@ def main
 
   max_count = 0
 
-  ARGV.each do |author|
-    #puts "author: #{author}"
-    lines = `git log --author=#{author}`
+  if ARGV.size > 0
+    authors = ARGV
+  else
+    authors = get_authors
+  end
+
+  authors.each do |author|
+    lines = `git log --author='#{author}'`
     time_lines = lines.split("\n").select {|l| l =~ /^Date:/}
     times = time_lines.map {|l| l.split(' ').select {|piece| piece =~ /\d\d\:\d\d\:\d\d/} }.flatten
-    
     groups = times.group_by do |l|
       get_time_segment(l)
     end
@@ -22,8 +26,6 @@ def main
       count = groups[g].size
       results[author][g] = count
       max_count = count if count > max_count
-      #print cocks
-      #puts "#{g} #{'% 3d' % count} 8#{'=' * count}D"
     end
   end
 
@@ -37,9 +39,12 @@ def main
 
   segments = pivoted.keys.sort.compact
 
-  print_author_key ARGV
+  print_author_key authors
   scaled_max = 30.0
   scale = scaled_max / (max_count + 1)
+  col_width = max_count.to_s.length + 1
+  col_width = 3 if col_width < 3
+  empty_cell = ' ' * col_width
 
   plot = 1.upto(segments.size).map do |x|
     1.upto(scaled_max).map do |y|
@@ -65,13 +70,13 @@ def main
       plot[x-1][y-1]
     end
 
-    '% 3d' % (y/scale) + ' ' + line.join('  ')
+    "% #{col_width -1}d" % (y/scale) + ' ' + line.join(' ' * (col_width -1))
   end
 
   graph.reverse.each {|line| puts line}
 
   axis = ''
-  counts = ['   '] * ARGV.length
+  counts = ['   '] * authors.length
 
   pivoted.keys.sort.each do |segment|
     if segment[3..4] == '00'
@@ -79,24 +84,38 @@ def main
     else
       axis += colorize(segment[3..4], 33)
     end
-    axis += ' '
+    axis += (' ' * (col_width -2))
 
     authors = pivoted[segment].keys.sort_by do |author|
       pivoted[segment][author]
     end.reverse
 
     0.upto(authors.size - 1) do |i|
-      counts[i] += colorize('% 3d' % pivoted[segment][authors[i]], get_color(authors[i]))
+      counts[i] += colorize("% #{col_width}d" % pivoted[segment][authors[i]], get_color(authors[i]))
     end
     authors.size.upto(counts.length - 1) do |i|
-      counts[i] += '   '
+      counts[i] +=empty_cell 
     end
   end
 
-  puts '    ' + axis
-  puts '    ' + ('---' * segments.length)
-  puts counts.join("\n")
+  puts empty_cell + ' ' + axis
+  puts empty_cell + ' ' + ('-' * (segments.length * col_width))
+  puts ' ' +  counts.join("\n ")
 
+end
+
+def get_authors
+  all = `git shortlog`.split("\n").select {|line| line =~ /\(\d+\):$/}
+  parsed = all.map do |line|
+    pos = line.rindex('(')
+    { 
+      :name => line[0..(pos - 2)],
+      :count => line[(pos +1)...-2].to_i
+    }
+  end 
+  sorted = parsed.sort_by {|a| -a[:count]}
+  top_5 = sorted[0..4]
+  @authors = top_5.map {|a| a[:name]}
 end
 
 def print_author_key authors
@@ -114,7 +133,7 @@ end
 
 def get_color author
   colors = [31,32,33,34,35,36]
-  index = ARGV.index(author)
+  index = @authors.index(author)
   color = colors[index % colors.length]
 end
 

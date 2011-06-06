@@ -1,0 +1,3 @@
+This is a simple script that prints a graph that shows the distribution of commits in a git repository, grouped by time of day and commiter.
+
+It can be used to determine what times of day each team member commits to the repository.
