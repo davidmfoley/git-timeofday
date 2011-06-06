@@ -1,4 +1,5 @@
 #! /usr/bin/env ruby
+
 def main
   results = {}
 
@@ -18,6 +19,7 @@ def main
       count = groups[g].size
       results[author][g] = count
       max_count = count if count > max_count
+      #print cocks
       #puts "#{g} #{'% 3d' % count} 8#{'=' * count}D"
     end
     puts
