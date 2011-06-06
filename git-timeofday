@@ -100,7 +100,7 @@ def main
 
   puts empty_cell + ' ' + axis
   puts empty_cell + ' ' + ('-' * (segments.length * col_width))
-  puts ' ' +  counts.join("\n ")
+  puts  counts.join("\n")
 
 end
 
