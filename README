@@ -6,3 +6,5 @@ If you invoke it with no arguments, it will determine the top 5 committers to gr
 
 You can also pass committer names (git patterns) on the command line to see distributions for specific committers.
 
+This has been tested on OSX... it uses ANSI color escapes so your terminal needs to understand that. 
+
