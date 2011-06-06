@@ -1,3 +1,8 @@
 This is a simple script that prints a graph that shows the distribution of commits in a git repository, grouped by time of day and commiter.
 
 It can be used to determine what times of day each team member commits to the repository.
+
+If you invoke it with no arguments, it will determine the top 5 committers to graph.
+
+You can also pass committer names (git patterns) on the command line to see distributions for specific committers.
+
