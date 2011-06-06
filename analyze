@@ -1,0 +1,135 @@
+#! /usr/bin/env ruby
+def main
+  results = {}
+
+  max_count = 0
+
+  ARGV.each do |author|
+    puts "author: #{author}"
+    lines = `git log --author=#{author} | awk /^Date/ | awk '{printf "%s\\n", $5}'`
+    groups = lines.split("\n").group_by do |l|
+      get_time_segment(l)
+    end
+
+    segments = groups.keys.sort
+
+    results[author] = {}
+    segments.each do |g|
+      count = groups[g].size
+      results[author][g] = count
+      max_count = count if count > max_count
+      #puts "#{g} #{'% 3d' % count} 8#{'=' * count}D"
+    end
+    puts
+  end
+
+  pivoted = {}
+  results.each do |author, hours|
+    hours.each do |hour, times|
+      pivoted[hour] ||= {}
+      pivoted[hour][author] = times
+    end
+  end
+
+  print_author_key ARGV
+
+  segments = pivoted.keys.sort.compact
+
+  segments.each do |hour|
+    draw = [' '] * max_count
+    pivoted[hour].each do |a, count|
+      draw[count] = get_point(a)
+    end
+    puts "#{hour} - #{draw.join('')}"
+  end
+
+  print_author_key ARGV
+  scaled_max = 30.0
+  scale = scaled_max / (max_count + 1)
+
+  plot = 1.upto(segments.size).map do |x|
+    1.upto(scaled_max).map do |y|
+      ' '
+    end
+  end
+
+  segments.each_with_index do |hour, i |
+    pivoted[hour].each do |author, count|
+      y = count * scale
+      if (plot[i][y] != ' ')
+        direction = 15 <=> y
+        while plot[i][y] != ' '
+          y = y + direction
+        end
+      end
+      plot[i][y] = get_point(author)
+    end
+  end
+
+  graph = 1.upto(scaled_max).map do |y|
+    line = 1.upto(segments.count).map do |x|
+      plot[x-1][y-1]
+    end
+
+    '% 3d' % (y/scale) + ' ' + line.join('  ')
+  end
+
+  graph.reverse.each {|line| puts line}
+
+  axis = ''
+  counts = ['   '] * ARGV.length
+
+  pivoted.keys.sort.each do |segment|
+    if segment[3..4] == '00'
+      axis += colorize(segment[0..1],32)
+    else
+      axis += colorize(segment[3..4], 33)
+    end
+    axis += ' '
+
+    authors = pivoted[segment].keys.sort_by do |author|
+      pivoted[segment][author]
+    end.reverse
+
+    0.upto(authors.size - 1) do |i|
+      counts[i] += colorize('% 3d' % pivoted[segment][authors[i]], get_color(authors[i]))
+    end
+    authors.size.upto(counts.length - 1) do |i|
+      counts[i] += '   '
+    end
+  end
+
+  puts '    ' + axis
+  puts '    ' + ('---' * segments.length)
+  puts counts.join("\n")
+
+end
+
+def print_author_key authors
+  authors.each {|author| puts colorize(author,  get_color( author )) }
+end
+
+def get_time_segment time
+  minutes_per_segment = 30
+  pieces = time.split(':')
+  hour = pieces.first
+  minute = (pieces[1].to_i / minutes_per_segment).to_i * minutes_per_segment
+
+  "#{hour}:#{'%02d' % minute}"
+end
+
+def get_color author
+  colors = [31,32,33,34,35,36]
+  index = ARGV.index(author)
+  color = colors[index % colors.length]
+end
+
+def get_point author
+  colorize("*", get_color( author ))
+end
+
+def colorize(text, color_code)
+  "\e[#{color_code}m#{text}\e[0m"
+end
+
+main
