@@ -70,7 +70,7 @@ def main
       plot[x-1][y-1]
     end
 
-    "% #{col_width -1}d" % (y/scale) + ' ' + line.join(' ' * (col_width -1))
+    "% #{col_width}d" % (y/scale) + ' ' + line.join(' ' * (col_width -1) )
   end
 
   graph.reverse.each {|line| puts line}
