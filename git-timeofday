@@ -136,14 +136,23 @@ def get_time_segment time
   "#{hour}:#{'%02d' % minute}"
 end
 
+def get_background_color author
+  colors = [41,42,43,44,45,46]
+  get_color_escape(colors, author)
+end
+
 def get_color author
   colors = [31,32,33,34,35,36]
+  get_color_escape colors, author
+end
+
+def get_color_escape colors, author
   index = @authors.index(author)
   color = colors[index % colors.length]
 end
 
 def get_point author
-  colorize("#", get_color( author ))
+  colorize(" ", get_background_color( author ))
 end
 
 def colorize(text, color_code)
