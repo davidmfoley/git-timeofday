@@ -4,11 +4,69 @@ begin
 rescue LoadError
   raise 'You must gem install win32console to use color on Windows'
 end
-def times_for_author author
-    lines = `git log --author='#{author}'`
-    time_lines = lines.split("\n").select {|l| l =~ /^Date:/}
-    times = time_lines.map {|l| l.split(' ').select {|piece| piece =~ /\d\d\:\d\d\:\d\d/} }.flatten
+
+def main
+  results = {}
+
+  max_count = 0
+
+  args = ARGV
+  if args.size > 0
+    authors = args
+  else
+    authors = get_authors
+  end
+
+  authors.each do |author|
+    times = times_for_author author
+
+    groups = times.group_by do |l|
+      get_time_segment(l)
+    end
+
+    segments = groups.keys.sort
+
+    results[author] = {}
+    segments.each do |g|
+      count = groups[g].size
+      results[author][g] = count
+      max_count = count if count > max_count
+    end
+  end
+
+  pivoted = pivot_results(results)
+
+  segments = pivoted.keys.sort.compact
+
+  scaled_max = 30.0
+  if scaled_max > max_count
+    scaled_max = max_count
+    scale = 1
+  else
+    scale = scaled_max / (max_count + 1)
+  end
+  col_width = max_count.to_s.length + 1
+  col_width = 3 if col_width < 3
+
+  empty_cell = ' ' * col_width
+
+  plot = build_plot(segments, pivoted, scale, scaled_max)
+
+  graph_lines = build_graph_lines(plot, segments, scale, scaled_max, col_width)
+
+  axis = render_time_segment_axis(pivoted, col_width, authors, empty_cell)
+  counts_by_person_and_time_segment = render_counts(pivoted, col_width, authors, empty_cell)
+
+  print_author_key authors
+  print_graph(graph_lines, axis, counts_by_person_and_time_segment, empty_cell, segments, col_width)
 end
+
+def times_for_author author
+  lines = `git log --author='#{author}'`
+  time_lines = lines.split("\n").select {|l| l =~ /^Date:/}
+  times = time_lines.map {|l| l.split(' ').select {|piece| piece =~ /\d\d\:\d\d\:\d\d/} }.flatten
+end
+
 def pivot_results results
   pivoted = {}
   results.each do |author, hours|
@@ -29,66 +87,21 @@ def build_plot segments, pivoted, scale, scaled_max
 
   segments.each_with_index do |hour, i |
     pivoted[hour].each do |author, count|
-      y = count * scale
-      if (plot[i][y] != ' ')
-        direction = 15 <=> y
-        direction = 1 if direction = 0
-        while plot[i][y] != ' ' && y >= 0 && y <= scaled_max
-          y = y + direction
-        end
+    y = count * scale
+    if (plot[i][y] != ' ')
+      direction = 15 <=> y
+      direction = 1 if direction = 0
+      while plot[i][y] != ' ' && y >= 0 && y <= scaled_max
+        y = y + direction
       end
-      plot[i][y] = get_point(author)
+    end
+    plot[i][y] = get_point(author)
     end
   end
   plot
 end
 
-def main
-  results = {}
-
-  max_count = 0
-
-  args = ARGV
-  if args.size > 0
-    authors = args
-  else
-    authors = get_authors
-  end
-
-  authors.each do |author|
-    times = times_for_author author
-    groups = times.group_by do |l|
-      get_time_segment(l)
-    end
-
-    segments = groups.keys.sort
-
-    results[author] = {}
-    segments.each do |g|
-      count = groups[g].size
-      results[author][g] = count
-      max_count = count if count > max_count
-    end
-  end
-
-  pivoted = pivot_results(results)
-
-  segments = pivoted.keys.sort.compact
-
-  print_author_key authors
-  scaled_max = 30.0
-  if scaled_max > max_count
-    scaled_max = max_count
-    scale = 1
-  else
-    scale = scaled_max / (max_count + 1)
-  end
-  col_width = max_count.to_s.length + 1
-  col_width = 3 if col_width < 3
-  empty_cell = ' ' * col_width
-
-
-  plot = build_plot(segments, pivoted, scale, scaled_max)
+def  build_graph_lines(plot, segments, scale, scaled_max, col_width)
 
   graph = 1.upto(scaled_max).map do |y|
     line = 1.upto(segments.count).map do |x|
@@ -97,9 +110,17 @@ def main
 
     "% #{col_width}d" % (y/scale) + ' ' + line.join(' ' * (col_width -1) )
   end
+end
+def print_graph(graph_lines, axis, counts_by_person_and_time_segment, empty_cell, segments, col_width)
+  graph_lines.reverse.each {|line| puts line}
 
-  graph.reverse.each {|line| puts line}
+  puts empty_cell + ' ' + axis
+  puts empty_cell + ' ' + ('-' * (segments.length * col_width))
+  puts  counts_by_person_and_time_segment.join("\n")
 
+end
+
+def render_time_segment_axis(pivoted, col_width, authors, empty_cell)
   axis = ''
   counts = ['   '] * authors.length
 
@@ -110,7 +131,14 @@ def main
       axis += colorize(segment[3..4], 33)
     end
     axis += (' ' * (col_width -2))
+  end
+  axis
+end
 
+def render_counts(pivoted, col_width, authors, empty_cell)
+  counts = ['   '] * authors.length
+
+  pivoted.keys.sort.each do |segment|
     authors = pivoted[segment].keys.sort_by do |author|
       pivoted[segment][author]
     end.reverse
@@ -122,11 +150,7 @@ def main
       counts[i] +=empty_cell
     end
   end
-
-  puts empty_cell + ' ' + axis
-  puts empty_cell + ' ' + ('-' * (segments.length * col_width))
-  puts  counts.join("\n")
-
+  counts
 end
 
 def get_authors
