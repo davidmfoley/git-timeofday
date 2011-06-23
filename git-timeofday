@@ -4,22 +4,59 @@ begin
 rescue LoadError
   raise 'You must gem install win32console to use color on Windows'
 end
+def times_for_author author
+    lines = `git log --author='#{author}'`
+    time_lines = lines.split("\n").select {|l| l =~ /^Date:/}
+    times = time_lines.map {|l| l.split(' ').select {|piece| piece =~ /\d\d\:\d\d\:\d\d/} }.flatten
+end
+def pivot_results results
+  pivoted = {}
+  results.each do |author, hours|
+    hours.each do |hour, times|
+      pivoted[hour] ||= {}
+      pivoted[hour][author] = times
+    end
+  end
+  pivoted
+end
+
+def build_plot segments, pivoted, scale, scaled_max
+  plot = 1.upto(segments.size).map do |x|
+    1.upto(scaled_max).map do |y|
+      ' '
+    end
+  end
+
+  segments.each_with_index do |hour, i |
+    pivoted[hour].each do |author, count|
+      y = count * scale
+      if (plot[i][y] != ' ')
+        direction = 15 <=> y
+        direction = 1 if direction = 0
+        while plot[i][y] != ' ' && y >= 0 && y <= scaled_max
+          y = y + direction
+        end
+      end
+      plot[i][y] = get_point(author)
+    end
+  end
+  plot
+end
 
 def main
   results = {}
 
   max_count = 0
 
-  if ARGV.size > 0
-    authors = ARGV
+  args = ARGV
+  if args.size > 0
+    authors = args
   else
     authors = get_authors
   end
 
   authors.each do |author|
-    lines = `git log --author='#{author}'`
-    time_lines = lines.split("\n").select {|l| l =~ /^Date:/}
-    times = time_lines.map {|l| l.split(' ').select {|piece| piece =~ /\d\d\:\d\d\:\d\d/} }.flatten
+    times = times_for_author author
     groups = times.group_by do |l|
       get_time_segment(l)
     end
@@ -34,41 +71,24 @@ def main
     end
   end
 
-  pivoted = {}
-  results.each do |author, hours|
-    hours.each do |hour, times|
-      pivoted[hour] ||= {}
-      pivoted[hour][author] = times
-    end
-  end
+  pivoted = pivot_results(results)
 
   segments = pivoted.keys.sort.compact
 
   print_author_key authors
   scaled_max = 30.0
-  scale = scaled_max / (max_count + 1)
+  if scaled_max > max_count
+    scaled_max = max_count
+    scale = 1
+  else
+    scale = scaled_max / (max_count + 1)
+  end
   col_width = max_count.to_s.length + 1
   col_width = 3 if col_width < 3
   empty_cell = ' ' * col_width
 
-  plot = 1.upto(segments.size).map do |x|
-    1.upto(scaled_max).map do |y|
-      ' '
-    end
-  end
 
-  segments.each_with_index do |hour, i |
-    pivoted[hour].each do |author, count|
-      y = count * scale
-      if (plot[i][y] != ' ')
-        direction = 15 <=> y
-        while plot[i][y] != ' '
-          y = y + direction
-        end
-      end
-      plot[i][y] = get_point(author)
-    end
-  end
+  plot = build_plot(segments, pivoted, scale, scaled_max)
 
   graph = 1.upto(scaled_max).map do |y|
     line = 1.upto(segments.count).map do |x|
@@ -99,7 +119,7 @@ def main
       counts[i] += colorize("% #{col_width}d" % pivoted[segment][authors[i]], get_color(authors[i]))
     end
     authors.size.upto(counts.length - 1) do |i|
-      counts[i] +=empty_cell 
+      counts[i] +=empty_cell
     end
   end
 
@@ -113,11 +133,11 @@ def get_authors
   all = `git shortlog`.split("\n").select {|line| line =~ /\(\d+\):$/}
   parsed = all.map do |line|
     pos = line.rindex('(')
-    { 
+    {
       :name => line[0..(pos - 2)],
       :count => line[(pos +1)...-2].to_i
     }
-  end 
+  end
   sorted = parsed.sort_by {|a| -a[:count]}
   top_5 = sorted[0..4]
   @authors = top_5.map {|a| a[:name]}
