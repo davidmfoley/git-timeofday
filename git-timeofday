@@ -12,17 +12,13 @@ def main
 
   args = ARGV
   if args.size > 0
-    authors = args
+    @authors = authors = args
   else
     authors = get_authors
   end
 
   authors.each do |author|
-    times = times_for_author author
-
-    groups = times.group_by do |l|
-      get_time_segment(l)
-    end
+    groups = get_groups_for_author author
 
     segments = groups.keys.sort
 
@@ -57,8 +53,16 @@ def main
   axis = render_time_segment_axis(pivoted, col_width, authors, empty_cell)
   counts_by_person_and_time_segment = render_counts(pivoted, col_width, authors, empty_cell)
 
-  print_author_key authors
+  print_author_key authors, results
   print_graph(graph_lines, axis, counts_by_person_and_time_segment, empty_cell, segments, col_width)
+end
+
+def get_groups_for_author author
+    times = times_for_author author
+
+    times.group_by do |l|
+      get_time_segment(l)
+    end
 end
 
 def times_for_author author
@@ -87,15 +91,15 @@ def build_plot segments, pivoted, scale, scaled_max
 
   segments.each_with_index do |hour, i |
     pivoted[hour].each do |author, count|
-    y = count * scale
-    if (plot[i][y] != ' ')
-      direction = 15 <=> y
-      direction = 1 if direction = 0
-      while plot[i][y] != ' ' && y >= 0 && y <= scaled_max
-        y = y + direction
+      y = count * scale
+      if (plot[i][y] != ' ')
+        direction = 15 <=> y
+        direction = 1 if direction == 0
+        while plot[i][y] != ' ' && y >= 0 && y <= scaled_max
+          y = y + direction
+       end
       end
-    end
-    plot[i][y] = get_point(author)
+      plot[i][y] = get_point(author)
     end
   end
   plot
@@ -167,8 +171,8 @@ def get_authors
   @authors = top_5.map {|a| a[:name]}
 end
 
-def print_author_key authors
-  authors.each {|author| puts colorize(author,  get_color( author )) }
+def print_author_key authors, results
+  authors.each {|author| puts colorize("#{author} #{results[author].values.reduce{|a,b| a+b}}",  get_color( author )) }
 end
 
 def get_time_segment time
@@ -191,7 +195,7 @@ def get_color author
 end
 
 def get_color_escape colors, author
-  index = @authors.index(author)
+  index = @authors.index(author) rescue 0
   color = colors[index % colors.length]
 end
 
