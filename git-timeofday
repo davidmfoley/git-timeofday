@@ -58,11 +58,11 @@ def main
 end
 
 def get_groups_for_author author
-    times = times_for_author author
+  times = times_for_author author
 
-    times.group_by do |l|
-      get_time_segment(l)
-    end
+  times.group_by do |l|
+    get_time_segment(l)
+  end
 end
 
 def times_for_author author
@@ -89,24 +89,30 @@ def build_plot segments, pivoted, scale, scaled_max
     end
   end
 
-  segments.each_with_index do |hour, i |
+  segments.each_with_index do |hour, x|
     pivoted[hour].each do |author, count|
       y = count * scale
-      if (plot[i][y] != ' ')
-        direction = 15 <=> y
-        direction = 1 if direction == 0
-        while plot[i][y] != ' ' && y >= 0 && y <= scaled_max
-          y = y + direction
-       end
-      end
-      plot[i][y] = get_point(author)
+      y = find_empty_cell(plot, x, y, scaled_max)
+
+      plot[x][y] = get_point(author)
     end
   end
   plot
 end
 
-def  build_graph_lines(plot, segments, scale, scaled_max, col_width)
+def find_empty_cell plot, x, y, scaled_max
+  return y  if (plot[x][y] == ' ')
 
+  direction = 15 <=> y
+  direction = 1 if direction == 0
+  while plot[x][y] != ' ' && y >= 0 && y <= scaled_max
+    y = y + direction
+  end
+
+  y
+end
+
+def  build_graph_lines(plot, segments, scale, scaled_max, col_width)
   graph = 1.upto(scaled_max).map do |y|
     line = 1.upto(segments.count).map do |x|
       plot[x-1][y-1]
@@ -115,6 +121,7 @@ def  build_graph_lines(plot, segments, scale, scaled_max, col_width)
     "% #{col_width}d" % (y/scale) + ' ' + line.join(' ' * (col_width -1) )
   end
 end
+
 def print_graph(graph_lines, axis, counts_by_person_and_time_segment, empty_cell, segments, col_width)
   graph_lines.reverse.each {|line| puts line}
 
