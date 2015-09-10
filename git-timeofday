@@ -128,12 +128,14 @@ def  build_graph_lines(plot, segments, scale, scaled_max, col_width)
     line = 1.upto(segments.count).map do |x|
       plot[x-1][y-1] * col_width
     end
+    y_label = "% #{col_width}d" % (y/scale)
 
-    "% #{col_width}d" % (y/scale) + ' ' + line.join('')
+    y_label + ' ' + line.join('') + ' ' + y_label
   end
 end
 
 def print_graph(graph_lines, axis, counts_by_person_and_time_segment, empty_cell, segments, col_width)
+  puts empty_cell + ' ' + axis
   graph_lines.reverse.each {|line| puts line}
 
   puts empty_cell + ' ' + axis
