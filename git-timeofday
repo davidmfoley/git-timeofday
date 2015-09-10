@@ -65,6 +65,17 @@ def get_groups_for_author author
   end
 end
 
+def empty_result_set
+  h = {}
+  (0..23).each do |hour|
+    ['00', '30'].each do |minute|
+      k = "#{"%02d" % hour}:#{minute}"
+      h[k] = {}
+    end
+  end
+  h
+end
+
 def times_for_author author
   lines = `git log --author='#{author}'`
   time_lines = lines.split("\n").select {|l| l =~ /^Date:/}
@@ -72,7 +83,7 @@ def times_for_author author
 end
 
 def pivot_results results
-  pivoted = {}
+  pivoted = empty_result_set
   results.each do |author, hours|
     hours.each do |hour, times|
       pivoted[hour] ||= {}
@@ -94,6 +105,7 @@ def build_plot segments, pivoted, scale, scaled_max
       y = count * scale
       y = find_empty_cell(plot, x, y, scaled_max)
 
+      plot[x][y] = get_point(author)
       plot[x][y] = get_point(author)
     end
   end
@@ -118,7 +130,7 @@ def  build_graph_lines(plot, segments, scale, scaled_max, col_width)
       plot[x-1][y-1]
     end
 
-    "% #{col_width}d" % (y/scale) + ' ' + line.join(' ' * (col_width -1) )
+    "% #{col_width}d" % (y/scale) + ' ' + line.join(' ' * (col_width - 1) )
   end
 end
 
