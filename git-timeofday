@@ -106,7 +106,6 @@ def build_plot segments, pivoted, scale, scaled_max
       y = find_empty_cell(plot, x, y, scaled_max)
 
       plot[x][y] = get_point(author)
-      plot[x][y] = get_point(author)
     end
   end
   plot
@@ -127,10 +126,10 @@ end
 def  build_graph_lines(plot, segments, scale, scaled_max, col_width)
   graph = 1.upto(scaled_max).map do |y|
     line = 1.upto(segments.count).map do |x|
-      plot[x-1][y-1]
+      plot[x-1][y-1] * col_width
     end
 
-    "% #{col_width}d" % (y/scale) + ' ' + line.join(' ' * (col_width - 1) )
+    "% #{col_width}d" % (y/scale) + ' ' + line.join('')
   end
 end
 
